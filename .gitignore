@@ -14,3 +14,4 @@ _resources/
 *.csv
 llm_cache.json
 overrides.json
+profiles.json
