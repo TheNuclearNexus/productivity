@@ -25,7 +25,7 @@ class InputMonitor(Monitor):
         self.platform = get_platform()
 
         # Start listeners before Qt event loop to prevent CGEvent clashes
-        self.m_listener = mouse.Listener(on_move=self.on_move)
+        self.m_listener = mouse.Listener(on_move=self.on_move, on_scroll=self.on_scroll)
 
         self.k_listener = keyboard.Listener(
             on_press=self.on_press, 
@@ -82,6 +82,9 @@ class InputMonitor(Monitor):
             self.shift_held = False
 
     def on_move(self, x, y):
+        self.mouse_move_count += 1
+
+    def on_scroll(self, x, y, dx, dy):
         self.mouse_move_count += 1
 
     def start(self):

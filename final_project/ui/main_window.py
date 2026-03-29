@@ -259,7 +259,8 @@ class FocusMeterOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
-        self.score = -1.0 # Force first update to trigger show()
+        self.target_score = -1.0
+        self.score = 50.0  # Start visual baseline
         self.is_increasing = True
 
         self.resize(100, 250)
@@ -270,15 +271,40 @@ class FocusMeterOverlay(QWidget):
 
         # Timer to hide after period of no score change
         self.fade_timer = QTimer(self)
-        self.fade_timer.timeout.connect(self.hide)
+        self.fade_timer.timeout.connect(self.trigger_fade_out)
+
+        self.target_opacity = 0.0
+        self.setWindowOpacity(0.0)
+
+        # 60fps interpolation timer
+        self.anim_timer = QTimer(self)
+        self.anim_timer.timeout.connect(self._lerp_step)
+        self.anim_timer.start(16)
+
+    def trigger_fade_out(self):
+        self.target_opacity = 0.0
+
+    def _lerp_step(self):
+        if self.target_score >= 0:
+            diff = self.target_score - self.score
+            if abs(diff) > 0.05:
+                self.score += diff * 0.02
+                self.update()
+
+        current_opacity = self.windowOpacity()
+        opacity_diff = self.target_opacity - current_opacity
+        if abs(opacity_diff) > 0.01:
+            self.setWindowOpacity(current_opacity + opacity_diff * 0.05)
+        elif self.target_opacity <= 0.0 and self.isVisible():
+            self.hide()
 
     def update_state(self, state: FocusState):
-        if abs(state.focus_score - self.score) > 0.01:
-            self.score = state.focus_score
+        if abs(state.focus_score - self.target_score) > 0.01:
+            self.target_score = state.focus_score
             self.is_increasing = state.is_increasing
+            self.target_opacity = 1.0
             self.show()
             self.fade_timer.start(8000) # Hide after 8 seconds of stagnation
-            self.update()  # Trigger repaint
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -383,7 +409,8 @@ class FocusRingOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
-        self.score = -1.0 # Force first update to trigger show()
+        self.target_score = -1.0
+        self.score = 50.0
         self.is_increasing = True
 
         self.resize(150, 150)
@@ -394,15 +421,40 @@ class FocusRingOverlay(QWidget):
 
         # Timer to hide after period of no score change
         self.fade_timer = QTimer(self)
-        self.fade_timer.timeout.connect(self.hide)
+        self.fade_timer.timeout.connect(self.trigger_fade_out)
+
+        self.target_opacity = 0.0
+        self.setWindowOpacity(0.0)
+
+        # 60fps interpolation timer
+        self.anim_timer = QTimer(self)
+        self.anim_timer.timeout.connect(self._lerp_step)
+        self.anim_timer.start(16)
+
+    def trigger_fade_out(self):
+        self.target_opacity = 0.0
+
+    def _lerp_step(self):
+        if self.target_score >= 0:
+            diff = self.target_score - self.score
+            if abs(diff) > 0.05:
+                self.score += diff * 0.02
+                self.update()
+
+        current_opacity = self.windowOpacity()
+        opacity_diff = self.target_opacity - current_opacity
+        if abs(opacity_diff) > 0.01:
+            self.setWindowOpacity(current_opacity + opacity_diff * 0.05)
+        elif self.target_opacity <= 0.0 and self.isVisible():
+            self.hide()
 
     def update_state(self, state: FocusState):
-        if abs(state.focus_score - self.score) > 0.01:
-            self.score = state.focus_score
+        if abs(state.focus_score - self.target_score) > 0.01:
+            self.target_score = state.focus_score
             self.is_increasing = state.is_increasing
+            self.target_opacity = 1.0
             self.show()
             self.fade_timer.start(8000) # Hide after stagnation
-            self.update()  # Trigger repaint
 
     def paintEvent(self, event):
         painter = QPainter(self)
