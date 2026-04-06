@@ -4,10 +4,21 @@ from final_project.core.profile import FocusProfile
 
 from final_project.core.overrides import OverridesManager
 
+from final_project.core.config import AppConfig
+
 class WindowClassifier:
-    def __init__(self, model: str = "llama3", overrides_mgr: OverridesManager = None):
-        self.client = OllamaClient()
-        self.model = model
+    def __init__(self, config: AppConfig, overrides_mgr: OverridesManager = None):
+        self.config = config
+        
+        if config.provider == "gemini" and config.gemini_api_key.strip():
+            from final_project.llm.client import GeminiClient
+            self.client = GeminiClient(api_key=config.gemini_api_key.strip())
+            self.model = "gemini-2.5-flash"
+        else:
+            from final_project.llm.client import OllamaClient
+            self.client = OllamaClient()
+            self.model = config.ollama_model
+            
         self.overrides = overrides_mgr
         # Simple in-memory cache mapped robustly to a JSON file explicitly
         self._cache = {}

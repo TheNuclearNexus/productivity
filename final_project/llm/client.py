@@ -24,3 +24,34 @@ class OllamaClient:
             except Exception as e:
                 print(f"Ollama API Error: {e}")
                 return None
+
+
+class GeminiClient:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    async def generate(self, prompt: str, model: str = "gemini-2.5-flash", json_mode: bool = False) -> Optional[str]:
+        """Send a prompt natively to Google's REST Endpoint implicitly requesting structured JSON."""
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
+        
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}]
+        }
+        if json_mode:
+            payload["generationConfig"] = {"responseMimeType": "application/json"}
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(url, json=payload, timeout=30.0)
+                response.raise_for_status()
+                data = response.json()
+
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts:
+                        return parts[0].get("text", "").strip()
+                return None
+            except Exception as e:
+                print(f"Gemini API Error: {e}")
+                return None

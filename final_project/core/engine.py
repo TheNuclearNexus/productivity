@@ -9,14 +9,16 @@ from final_project.llm.classifier import WindowClassifier
 from final_project.core.logger import SessionLogger
 from final_project.core.overrides import OverridesManager
 
+from final_project.core.config import AppConfig
+
 import threading
 
 class TrackerEngine:
-    def __init__(self, model: str = "llama3"):
+    def __init__(self, config: AppConfig):
         self.window_monitor = WindowMonitor()
         self.input_monitor = InputMonitor()
         self.overrides = OverridesManager()
-        self.classifier = WindowClassifier(model=model, overrides_mgr=self.overrides)
+        self.classifier = WindowClassifier(config=config, overrides_mgr=self.overrides)
         self.state = FocusState(profile=FocusProfile(name="Idle", description="Idle"))
         
         self.logger = SessionLogger()

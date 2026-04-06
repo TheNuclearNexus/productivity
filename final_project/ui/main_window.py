@@ -488,15 +488,66 @@ class FocusRingOverlay(QWidget):
 
 
 
+class SettingsDialog(QDialog):
+    def __init__(self, config_manager, parent=None):
+        super().__init__(parent)
+        self.config_manager = config_manager
+        self.setWindowTitle("Global Settings")
+        self.resize(400, 200)
+
+        layout = QVBoxLayout()
+        
+        self.provider_combo = QComboBox()
+        self.provider_combo.addItem("Ollama (Local Models)", "ollama")
+        self.provider_combo.addItem("Google Gemini (REST API)", "gemini")
+        
+        idx = self.provider_combo.findData(self.config_manager.config.provider)
+        if idx >= 0:
+            self.provider_combo.setCurrentIndex(idx)
+            
+        layout.addWidget(QLabel("LLM Provider:"))
+        layout.addWidget(self.provider_combo)
+
+        self.model_input = QLineEdit()
+        self.model_input.setText(self.config_manager.config.ollama_model)
+        layout.addWidget(QLabel("Ollama Model String (e.g. llama3.1:8b):"))
+        layout.addWidget(self.model_input)
+        
+        self.api_key_input = QLineEdit()
+        self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.api_key_input.setText(self.config_manager.config.gemini_api_key)
+        layout.addWidget(QLabel("Gemini API Key:"))
+        layout.addWidget(self.api_key_input)
+        
+        self.save_btn = QPushButton("Save Config")
+        self.save_btn.clicked.connect(self.save_config)
+        layout.addWidget(self.save_btn)
+        
+        self.setLayout(layout)
+
+    def save_config(self):
+        self.config_manager.config.provider = self.provider_combo.currentData()
+        self.config_manager.config.ollama_model = self.model_input.text().strip()
+        self.config_manager.config.gemini_api_key = self.api_key_input.text().strip()
+        self.config_manager.save()
+        self.accept()
+
+
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Productivity Tracker")
         self.resize(300, 150)
 
-        # Initialize the backend tracker dynamically using environment bindings
-        model_name = os.environ.get("OLLAMA_MODEL", "llama3.1:8b")
-        self.engine = TrackerEngine(model=model_name)
+        from final_project.core.config import ConfigManager
+        self.config_manager = ConfigManager()
+        
+        # Check if first launch explicitly
+        if not os.path.exists("config.json"):
+            dlg = SettingsDialog(self.config_manager, self)
+            dlg.exec()
+
+        self.engine = TrackerEngine(config=self.config_manager.config)
         self.profile_manager = ProfileManager()
 
         self.engine_thread = None
@@ -552,6 +603,11 @@ class MainWindow(QWidget):
         self.edit_profiles_btn.clicked.connect(self.open_profile_editor)
         layout.addWidget(self.edit_profiles_btn)
 
+        # Append Global Settings inherently explicitly
+        self.app_settings_btn = QPushButton("Global Settings")
+        self.app_settings_btn.clicked.connect(self.open_global_settings)
+        layout.addWidget(self.app_settings_btn)
+
         # Add Overlay Toggle Data
         overlay_label = QLabel("Select Active Overlay:")
         layout.addWidget(overlay_label)
@@ -582,6 +638,23 @@ class MainWindow(QWidget):
         dlg = ProfileEditorDialog(self.profile_manager, self)
         dlg.exec()
         self.refresh_profile_combo()
+
+    def open_global_settings(self):
+        dlg = SettingsDialog(self.config_manager, self)
+        dlg.exec()
+        
+        # Inject config actively to the live engine
+        self.engine.classifier.config = self.config_manager.config
+        
+        cfg = self.config_manager.config
+        if cfg.provider == "gemini" and cfg.gemini_api_key.strip():
+            from final_project.llm.client import GeminiClient
+            self.engine.classifier.client = GeminiClient(api_key=cfg.gemini_api_key.strip())
+            self.engine.classifier.model = "gemini-2.5-flash"
+        else:
+            from final_project.llm.client import OllamaClient
+            self.engine.classifier.client = OllamaClient()
+            self.engine.classifier.model = cfg.ollama_model
 
     def open_editor(self):
         if not self.engine:
