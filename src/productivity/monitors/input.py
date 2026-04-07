@@ -3,13 +3,14 @@ import time
 from typing import Dict, Any, Optional
 
 from pynput import keyboard, mouse
-from final_project.monitors.base import Monitor
-from final_project.platforms import get_platform
+from productivity.monitors.base import Monitor
+from productivity.platforms import get_platform
 
 try:
     _ = get_platform().check_accessibility()
 except Exception:
     pass
+
 
 class InputMonitor(Monitor):
     def __init__(self):
@@ -28,9 +29,9 @@ class InputMonitor(Monitor):
         self.m_listener = mouse.Listener(on_move=self.on_move, on_scroll=self.on_scroll)
 
         self.k_listener = keyboard.Listener(
-            on_press=self.on_press, 
+            on_press=self.on_press,
             on_release=self.on_release,
-            darwin_intercept=self.platform.get_keyboard_intercept()
+            darwin_intercept=self.platform.get_keyboard_intercept(),
         )
         self.k_listener.start()
         self.m_listener.start()
@@ -54,7 +55,10 @@ class InputMonitor(Monitor):
         ):
             # For max compatibility handle Cmd or Option as the trigger anchor
             self.modifier_held = True
-        elif key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r) or "shift" in key_name:
+        elif (
+            key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r)
+            or "shift" in key_name
+        ):
             self.shift_held = True
         elif key == keyboard.Key.tab and self.modifier_held:
             if self.on_alt_tab_pressed:
@@ -78,7 +82,10 @@ class InputMonitor(Monitor):
             self.modifier_held = False
             if self.on_alt_released:
                 self.on_alt_released()
-        elif key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r) or "shift" in key_name:
+        elif (
+            key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r)
+            or "shift" in key_name
+        ):
             self.shift_held = False
 
     def on_move(self, x, y):

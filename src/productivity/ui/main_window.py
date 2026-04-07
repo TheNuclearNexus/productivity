@@ -14,9 +14,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer, QPointF, QObject, Signal
 from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QGuiApplication
 
-from final_project.core.engine import TrackerEngine
-from final_project.core.state import FocusState
-from final_project.core.profile import ProfileManager, FocusProfile
+from productivity.core.engine import TrackerEngine
+from productivity.core.state import FocusState
+from productivity.core.profile import ProfileManager, FocusProfile
 
 
 class OrbitalSignals(QObject):
@@ -42,23 +42,43 @@ class OverrideEditorDialog(QDialog):
         # Populate list
         self.titles = []
         seen = set()
-        
+
         # 1. Load persistently saved historical overrides
         if self.engine and self.engine.overrides:
-            profile_saves = self.engine.overrides.overrides.get(self.current_profile_name, {})
+            profile_saves = self.engine.overrides.overrides.get(
+                self.current_profile_name, {}
+            )
             for title, entry in profile_saves.items():
-                score = entry.get("score", 0.5) if isinstance(entry, dict) else float(entry)
-                pretty_name = entry.get("pretty_name", title) if isinstance(entry, dict) else title
-                self.titles.append((title, {"score": score, "pretty_name": pretty_name}))
+                score = (
+                    entry.get("score", 0.5) if isinstance(entry, dict) else float(entry)
+                )
+                pretty_name = (
+                    entry.get("pretty_name", title)
+                    if isinstance(entry, dict)
+                    else title
+                )
+                self.titles.append(
+                    (title, {"score": score, "pretty_name": pretty_name})
+                )
                 seen.add(title)
-                
+
         # 2. Merge any new active windows from this session's cache
         if self.engine and self.engine.classifier:
             for (title, profile_name), entry in self.engine.classifier._cache.items():
                 if profile_name == self.current_profile_name and title not in seen:
-                    score = entry.get("score", 0.5) if isinstance(entry, dict) else float(entry)
-                    pretty_name = entry.get("pretty_name", title) if isinstance(entry, dict) else title
-                    self.titles.append((title, {"score": score, "pretty_name": pretty_name}))
+                    score = (
+                        entry.get("score", 0.5)
+                        if isinstance(entry, dict)
+                        else float(entry)
+                    )
+                    pretty_name = (
+                        entry.get("pretty_name", title)
+                        if isinstance(entry, dict)
+                        else title
+                    )
+                    self.titles.append(
+                        (title, {"score": score, "pretty_name": pretty_name})
+                    )
                     seen.add(title)
 
         self.titles.sort(key=lambda x: x[0])
@@ -80,7 +100,7 @@ class OverrideEditorDialog(QDialog):
         slider_layout.addWidget(QLabel("Score:"))
         slider_layout.addWidget(self.slider)
         slider_layout.addWidget(self.score_label)
-        
+
         # Add Rename App input
         rename_layout = QHBoxLayout()
         self.rename_input = QLineEdit()
@@ -115,7 +135,7 @@ class OverrideEditorDialog(QDialog):
         self.score_label.setEnabled(True)
         self.rename_input.setEnabled(True)
         self.save_btn.setEnabled(True)
-        
+
         self.slider.setValue(int(score * 100))
         self.score_label.setText(f"{score:.2f}")
         self.rename_input.setText(pretty_name)
@@ -127,16 +147,18 @@ class OverrideEditorDialog(QDialog):
         idx = self.app_list.currentRow()
         if idx < 0:
             return
-            
+
         title, entry = self.titles[idx]
         new_score = self.slider.value() / 100.0
         new_name = self.rename_input.text()
 
         if self.engine and self.engine.overrides:
-            self.engine.overrides.set_score(self.current_profile_name, title, new_score, new_name)
+            self.engine.overrides.set_score(
+                self.current_profile_name, title, new_score, new_name
+            )
             self.engine.classifier._cache[(title, self.current_profile_name)] = {
                 "score": new_score,
-                "pretty_name": new_name
+                "pretty_name": new_name,
             }
 
         self.titles[idx] = (title, {"score": new_score, "pretty_name": new_name})
@@ -144,20 +166,22 @@ class OverrideEditorDialog(QDialog):
 
 
 from PySide6.QtWidgets import QTextEdit, QMessageBox
+
+
 class ProfileEditorDialog(QDialog):
     def __init__(self, profile_manager, parent=None):
         super().__init__(parent)
         self.profile_manager = profile_manager
         self.setWindowTitle("Edit Focus Profiles")
         self.resize(600, 400)
-        
+
         main_layout = QHBoxLayout()
         # Left Side - List
         left_layout = QVBoxLayout()
         self.profile_list = QListWidget()
         left_layout.addWidget(QLabel("Profiles:"))
         left_layout.addWidget(self.profile_list)
-        
+
         btn_layout = QHBoxLayout()
         self.add_btn = QPushButton("New")
         self.add_btn.clicked.connect(self.add_profile)
@@ -166,51 +190,51 @@ class ProfileEditorDialog(QDialog):
         btn_layout.addWidget(self.add_btn)
         btn_layout.addWidget(self.del_btn)
         left_layout.addLayout(btn_layout)
-        
+
         main_layout.addLayout(left_layout, 1)
-        
+
         # Right Side - Editor
         right_layout = QVBoxLayout()
         self.name_input = QLineEdit()
         right_layout.addWidget(QLabel("Name:"))
         right_layout.addWidget(self.name_input)
-        
+
         self.desc_input = QTextEdit()
         right_layout.addWidget(QLabel("Context Description:"))
         right_layout.addWidget(self.desc_input)
-        
+
         self.save_btn = QPushButton("Save Changes")
         self.save_btn.clicked.connect(self.save_current)
         right_layout.addWidget(self.save_btn)
-        
+
         main_layout.addLayout(right_layout, 2)
-        
+
         self.setLayout(main_layout)
-        
+
         self.profile_keys = []
         self.current_key = None
-        
+
         self.refresh_list()
         self.profile_list.currentRowChanged.connect(self.on_selection)
-        
+
     def refresh_list(self):
         self.profile_list.clear()
         self.profile_keys = list(self.profile_manager.profiles.keys())
         for key in self.profile_keys:
             self.profile_list.addItem(self.profile_manager.profiles[key].name)
-            
+
     def on_selection(self, idx):
         if idx < 0 or idx >= len(self.profile_keys):
             self.current_key = None
             self.name_input.clear()
             self.desc_input.clear()
             return
-            
+
         self.current_key = self.profile_keys[idx]
         profile = self.profile_manager.profiles[self.current_key]
         self.name_input.setText(profile.name)
         self.desc_input.setPlainText(profile.description)
-        
+
     def add_profile(self):
         self.profile_list.clearSelection()
         self.current_key = None
@@ -218,30 +242,33 @@ class ProfileEditorDialog(QDialog):
         self.desc_input.setPlainText("Description here...")
         self.name_input.setFocus()
         self.name_input.selectAll()
-        
+
     def save_current(self):
         name = self.name_input.text().strip()
         desc = self.desc_input.toPlainText().strip()
         if not name or not desc:
             QMessageBox.warning(self, "Error", "Name and Description cannot be empty.")
             return
-            
+
         if self.current_key is None:
             self.current_key = self.profile_manager.generate_key(name)
-            
-        self.profile_manager.profiles[self.current_key] = FocusProfile(name=name, description=desc)
+
+        self.profile_manager.profiles[self.current_key] = FocusProfile(
+            name=name, description=desc
+        )
         self.profile_manager.save()
         self.refresh_list()
-        
+
         if self.current_key in self.profile_keys:
             self.profile_list.setCurrentRow(self.profile_keys.index(self.current_key))
-            
+
     def delete_profile(self):
-        if not self.current_key: return
+        if not self.current_key:
+            return
         if len(self.profile_manager.profiles) <= 1:
             QMessageBox.warning(self, "Error", "Cannot delete the last profile.")
             return
-            
+
         del self.profile_manager.profiles[self.current_key]
         self.profile_manager.save()
         self.refresh_list()
@@ -264,10 +291,12 @@ class FocusMeterOverlay(QWidget):
         self.is_increasing = True
 
         self.resize(100, 250)
-        
+
         # Position at Bottom Right
         screen = QGuiApplication.primaryScreen().geometry()
-        self.move(screen.width() - self.width() - 30, screen.height() - self.height() - 30)
+        self.move(
+            screen.width() - self.width() - 30, screen.height() - self.height() - 30
+        )
 
         # Timer to hide after period of no score change
         self.fade_timer = QTimer(self)
@@ -304,7 +333,7 @@ class FocusMeterOverlay(QWidget):
             self.is_increasing = state.is_increasing
             self.target_opacity = 1.0
             self.show()
-            self.fade_timer.start(8000) # Hide after 8 seconds of stagnation
+            self.fade_timer.start(8000)  # Hide after 8 seconds of stagnation
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -414,10 +443,12 @@ class FocusRingOverlay(QWidget):
         self.is_increasing = True
 
         self.resize(150, 150)
-        
+
         # Position at Bottom Right
         screen = QGuiApplication.primaryScreen().geometry()
-        self.move(screen.width() - self.width() - 30, screen.height() - self.height() - 30)
+        self.move(
+            screen.width() - self.width() - 30, screen.height() - self.height() - 30
+        )
 
         # Timer to hide after period of no score change
         self.fade_timer = QTimer(self)
@@ -454,38 +485,48 @@ class FocusRingOverlay(QWidget):
             self.is_increasing = state.is_increasing
             self.target_opacity = 1.0
             self.show()
-            self.fade_timer.start(8000) # Hide after stagnation
+            self.fade_timer.start(8000)  # Hide after stagnation
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
+
         margin = 20
         rect = event.rect().adjusted(margin, margin, -margin, -margin)
-        
+
         # Draw faint background ring
-        painter.setPen(QPen(QColor(0, 0, 0, 80), 12, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setPen(
+            QPen(
+                QColor(0, 0, 0, 80), 12, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap
+            )
+        )
         painter.drawArc(rect, 0, 360 * 16)
-        
+
         # Draw white outline backdrop for contrast
-        painter.setPen(QPen(QColor(255, 255, 255, 60), 16, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setPen(
+            QPen(
+                QColor(255, 255, 255, 60),
+                16,
+                Qt.PenStyle.SolidLine,
+                Qt.PenCapStyle.RoundCap,
+            )
+        )
         painter.drawArc(rect, 0, 360 * 16)
 
         # Draw filled orbital arc based on focus score
         start_angle = 90 * 16  # 12 O'clock position
         span_angle = int(-(self.score / 100.0) * 360 * 16)  # Clockwise sweep
-        
+
         color = QColor(144, 238, 144) if self.is_increasing else QColor(255, 99, 71)
-        
+
         painter.setPen(QPen(color, 10, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.drawArc(rect, start_angle, span_angle)
-        
+
         # Draw a small inner pulsating/orbiting dot representing the core focus
         center = rect.center()
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(color))
         painter.drawEllipse(center, int(self.score / 10.0), int(self.score / 10.0))
-
 
 
 class SettingsDialog(QDialog):
@@ -496,15 +537,15 @@ class SettingsDialog(QDialog):
         self.resize(400, 200)
 
         layout = QVBoxLayout()
-        
+
         self.provider_combo = QComboBox()
         self.provider_combo.addItem("Ollama (Local Models)", "ollama")
         self.provider_combo.addItem("Google Gemini (REST API)", "gemini")
-        
+
         idx = self.provider_combo.findData(self.config_manager.config.provider)
         if idx >= 0:
             self.provider_combo.setCurrentIndex(idx)
-            
+
         layout.addWidget(QLabel("LLM Provider:"))
         layout.addWidget(self.provider_combo)
 
@@ -512,17 +553,17 @@ class SettingsDialog(QDialog):
         self.model_input.setText(self.config_manager.config.ollama_model)
         layout.addWidget(QLabel("Ollama Model String (e.g. llama3.1:8b):"))
         layout.addWidget(self.model_input)
-        
+
         self.api_key_input = QLineEdit()
         self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.api_key_input.setText(self.config_manager.config.gemini_api_key)
         layout.addWidget(QLabel("Gemini API Key:"))
         layout.addWidget(self.api_key_input)
-        
+
         self.save_btn = QPushButton("Save Config")
         self.save_btn.clicked.connect(self.save_config)
         layout.addWidget(self.save_btn)
-        
+
         self.setLayout(layout)
 
     def save_config(self):
@@ -539,9 +580,10 @@ class MainWindow(QWidget):
         self.setWindowTitle("Productivity Tracker")
         self.resize(300, 150)
 
-        from final_project.core.config import ConfigManager
+        from productivity.core.config import ConfigManager
+
         self.config_manager = ConfigManager()
-        
+
         # Check if first launch explicitly
         if not os.path.exists("config.json"):
             dlg = SettingsDialog(self.config_manager, self)
@@ -565,19 +607,24 @@ class MainWindow(QWidget):
         self.orbital_signals.alt_released.connect(self.handle_alt_released)
 
         # Hook standard overlay signals
-        self.engine.input_monitor.on_alt_tab_pressed = lambda reverse: self.orbital_signals.alt_tab_pressed.emit(reverse)
-        self.engine.input_monitor.on_alt_released = lambda: self.orbital_signals.alt_released.emit()
-        
+        self.engine.input_monitor.on_alt_tab_pressed = lambda reverse: (
+            self.orbital_signals.alt_tab_pressed.emit(reverse)
+        )
+        self.engine.input_monitor.on_alt_released = lambda: (
+            self.orbital_signals.alt_released.emit()
+        )
+
         self.init_ui()
 
     def handle_alt_tab(self, reverse=False):
         if self.overlay_combo.currentData() == "orbital" and self.engine._running:
             if not self.orbital_switcher:
-                from final_project.ui.orbital_switcher import OrbitalSwitcher
+                from productivity.ui.orbital_switcher import OrbitalSwitcher
+
                 self.orbital_switcher = OrbitalSwitcher(self.engine)
-            
+
             self.orbital_switcher.is_actively_switching = True
-            
+
             if not self.orbital_switcher.isVisible():
                 self.orbital_switcher.show()
                 # UI rendering will trigger internally but we optionally force refresh here
@@ -585,7 +632,9 @@ class MainWindow(QWidget):
                 self.orbital_switcher.cycle(reverse)
 
     def handle_alt_released(self):
-        if self.orbital_switcher and getattr(self.orbital_switcher, 'is_actively_switching', False):
+        if self.orbital_switcher and getattr(
+            self.orbital_switcher, "is_actively_switching", False
+        ):
             self.orbital_switcher.activate_selected()
             self.orbital_switcher.is_actively_switching = False
 
@@ -598,7 +647,7 @@ class MainWindow(QWidget):
         self.profile_combo = QComboBox()
         self.refresh_profile_combo()
         layout.addWidget(self.profile_combo)
-        
+
         self.edit_profiles_btn = QPushButton("Edit Profiles")
         self.edit_profiles_btn.clicked.connect(self.open_profile_editor)
         layout.addWidget(self.edit_profiles_btn)
@@ -642,28 +691,33 @@ class MainWindow(QWidget):
     def open_global_settings(self):
         dlg = SettingsDialog(self.config_manager, self)
         dlg.exec()
-        
+
         # Inject config actively to the live engine
         self.engine.classifier.config = self.config_manager.config
-        
+
         cfg = self.config_manager.config
         if cfg.provider == "gemini" and cfg.gemini_api_key.strip():
-            from final_project.llm.client import GeminiClient
-            self.engine.classifier.client = GeminiClient(api_key=cfg.gemini_api_key.strip())
+            from productivity.llm.client import GeminiClient
+
+            self.engine.classifier.client = GeminiClient(
+                api_key=cfg.gemini_api_key.strip()
+            )
             self.engine.classifier.model = "gemini-2.5-flash"
         else:
-            from final_project.llm.client import OllamaClient
+            from productivity.llm.client import OllamaClient
+
             self.engine.classifier.client = OllamaClient()
             self.engine.classifier.model = cfg.ollama_model
 
     def open_editor(self):
         if not self.engine:
             return
-        
+
         current_profile_key = self.profile_combo.currentData()
-        if not current_profile_key: return
+        if not current_profile_key:
+            return
         current_profile_name = self.profile_manager.profiles[current_profile_key].name
-        
+
         dlg = OverrideEditorDialog(self.engine, current_profile_name, self)
         dlg.exec()
 

@@ -1,7 +1,8 @@
 import sys
 from typing import Any, Dict, Optional
-from final_project.monitors.base import Monitor
-from final_project.platforms import get_platform
+from productivity.monitors.base import Monitor
+from productivity.platforms import get_platform
+
 
 class WindowMonitor(Monitor):
     """Monitors the active window title and application name cleanly using Platform abstractions."""
@@ -18,14 +19,14 @@ class WindowMonitor(Monitor):
 
     def get_state(self) -> Dict[str, Any]:
         """Fetch the currently active window title and process context."""
-        
+
         info = self.platform.get_active_window_info()
         title = info.get("active_window_title")
-        
+
         if not title or title == "Unknown":
             title = self.last_active_title or "Unknown"
         else:
             self.last_active_title = title
-            
+
         info["active_window_title"] = title
         return info
