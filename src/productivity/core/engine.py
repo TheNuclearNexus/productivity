@@ -68,15 +68,15 @@ class TrackerEngine:
         except Exception as e:
             print(f"Bootstrap evaluation skipped/failed: {e}")
 
-    def stop(self):
+    def stop(self, overlay_name: str = "default", survey_results: dict = None):
         if not self._running:
             return
 
         self._running = False
         self.window_monitor.stop()
         self.input_monitor.stop()
-        df = self.logger.end_session()
-        self.logger.plot_session(df)
+        df = self.logger.end_session(overlay_name, survey_results)
+        self.logger.plot_session(df, survey_results)
 
     def tick(self):
         """Called periodically by the main GUI thread/timer."""
@@ -117,6 +117,10 @@ class TrackerEngine:
 
                 self.state.update_score(relevance, kpm, mpm, window_switched)
 
+                # Capture switcher state atomically
+                switcher_used = getattr(self, "_switcher_used", False)
+                self._switcher_used = False
+
                 # Natively storing verbose title to logs logically per explicit fallback
                 self.logger.log(
                     profile=self.state.profile.name,
@@ -125,6 +129,7 @@ class TrackerEngine:
                     kpm=kpm,
                     mpm=mpm,
                     focus_score=self.state.focus_score,
+                    used_app_switcher=switcher_used
                 )
 
                 if self.on_state_change:

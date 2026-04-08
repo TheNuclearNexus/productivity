@@ -23,6 +23,84 @@ class OrbitalSignals(QObject):
     alt_tab_pressed = Signal(bool)
     alt_released = Signal()
 
+class SurveyDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Post-Session Analysis Survey")
+        self.resize(400, 450)
+
+        layout = QVBoxLayout()
+        
+        # 1. Productivity Slider
+        layout.addWidget(QLabel("How productive did you feel? (1: Low, 7: High)"))
+        self.prod_slider = QSlider(Qt.Orientation.Horizontal)
+        self.prod_slider.setRange(1, 7)
+        self.prod_slider.setValue(4)
+        self.prod_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.prod_slider.setTickInterval(1)
+        layout.addWidget(self.prod_slider)
+
+        # 2. Distracted Slider
+        layout.addWidget(QLabel("How distracted did you feel? (1: Low, 7: High)"))
+        self.dist_slider = QSlider(Qt.Orientation.Horizontal)
+        self.dist_slider.setRange(1, 7)
+        self.dist_slider.setValue(4)
+        self.dist_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.dist_slider.setTickInterval(1)
+        layout.addWidget(self.dist_slider)
+
+        # 3. Distraction Length
+        layout.addWidget(QLabel("How long did your distractions feel? (1: Short, 7: Long)"))
+        self.len_slider = QSlider(Qt.Orientation.Horizontal)
+        self.len_slider.setRange(1, 7)
+        self.len_slider.setValue(4)
+        self.len_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.len_slider.setTickInterval(1)
+        layout.addWidget(self.len_slider)
+
+        # 4. Tracking Accuracy
+        layout.addWidget(QLabel("How accurate did automated tracking feel? (1: Inaccurate, 7: Accurate)"))
+        self.acc_slider = QSlider(Qt.Orientation.Horizontal)
+        self.acc_slider.setRange(1, 7)
+        self.acc_slider.setValue(4)
+        self.acc_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.acc_slider.setTickInterval(1)
+        layout.addWidget(self.acc_slider)
+
+        # 5. Profile Adherence
+        layout.addWidget(QLabel("Did you stick to your Profile Context? (1: Diverged, 7: Perfectly)"))
+        self.prof_slider = QSlider(Qt.Orientation.Horizontal)
+        self.prof_slider.setRange(1, 7)
+        self.prof_slider.setValue(4)
+        self.prof_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.prof_slider.setTickInterval(1)
+        layout.addWidget(self.prof_slider)
+
+        # 6. Fatigue
+        layout.addWidget(QLabel("How mentally fatigued do you feel? (1: Refreshed, 7: Exhausted)"))
+        self.fatigue_slider = QSlider(Qt.Orientation.Horizontal)
+        self.fatigue_slider.setRange(1, 7)
+        self.fatigue_slider.setValue(4)
+        self.fatigue_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.fatigue_slider.setTickInterval(1)
+        layout.addWidget(self.fatigue_slider)
+
+        self.submit_btn = QPushButton("Complete & View Final Report")
+        self.submit_btn.clicked.connect(self.accept)
+        layout.addWidget(self.submit_btn)
+
+        self.setLayout(layout)
+
+    def get_results(self):
+        return {
+            "productivity": self.prod_slider.value(),
+            "distraction_level": self.dist_slider.value(),
+            "distraction_length": self.len_slider.value(),
+            "tracking_accuracy": self.acc_slider.value(),
+            "profile_adherence": self.prof_slider.value(),
+            "mental_fatigue": self.fatigue_slider.value()
+        }
+
 
 class OverrideEditorDialog(QDialog):
     def __init__(self, engine, target_profile_name, parent=None):
@@ -274,156 +352,7 @@ class ProfileEditorDialog(QDialog):
         self.refresh_list()
 
 
-class FocusMeterOverlay(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.ToolTip
-            | Qt.WindowType.WindowTransparentForInput
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
-        self.target_score = -1.0
-        self.score = 50.0  # Start visual baseline
-        self.is_increasing = True
-
-        self.resize(100, 250)
-
-        # Position at Bottom Right
-        screen = QGuiApplication.primaryScreen().geometry()
-        self.move(
-            screen.width() - self.width() - 30, screen.height() - self.height() - 30
-        )
-
-        # Timer to hide after period of no score change
-        self.fade_timer = QTimer(self)
-        self.fade_timer.timeout.connect(self.trigger_fade_out)
-
-        self.target_opacity = 0.0
-        self.setWindowOpacity(0.0)
-
-        # 60fps interpolation timer
-        self.anim_timer = QTimer(self)
-        self.anim_timer.timeout.connect(self._lerp_step)
-        self.anim_timer.start(16)
-
-    def trigger_fade_out(self):
-        self.target_opacity = 0.0
-
-    def _lerp_step(self):
-        if self.target_score >= 0:
-            diff = self.target_score - self.score
-            if abs(diff) > 0.05:
-                self.score += diff * 0.02
-                self.update()
-
-        current_opacity = self.windowOpacity()
-        opacity_diff = self.target_opacity - current_opacity
-        if abs(opacity_diff) > 0.01:
-            self.setWindowOpacity(current_opacity + opacity_diff * 0.05)
-        elif self.target_opacity <= 0.0 and self.isVisible():
-            self.hide()
-
-    def update_state(self, state: FocusState):
-        if abs(state.focus_score - self.target_score) > 0.01:
-            self.target_score = state.focus_score
-            self.is_increasing = state.is_increasing
-            self.target_opacity = 1.0
-            self.show()
-            self.fade_timer.start(8000)  # Hide after 8 seconds of stagnation
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        width = self.width()
-        height = self.height()
-
-        # Dimensions for the bar
-        bar_width = 30
-        bar_x = (width - bar_width) // 2 + 15  # Shift right to leave room for arrow
-        bar_y = 10
-        bar_height = height - 20
-        radius = 10.0
-
-        # Draw background (empty bar)
-        painter.setPen(QPen(QColor(0, 0, 0), 4))
-        painter.setBrush(QBrush(QColor(255, 255, 255)))
-        painter.drawRoundedRect(bar_x, bar_y, bar_width, bar_height, radius, radius)
-
-        # Draw fill
-        fill_height = (self.score / 100.0) * bar_height
-        fill_y = bar_y + bar_height - fill_height
-
-        color = (
-            QColor(144, 238, 144) if self.is_increasing else QColor(255, 99, 71)
-        )  # Light green / Tomato red
-
-        painter.setBrush(QBrush(color))
-        painter.setPen(Qt.PenStyle.NoPen)
-
-        painter.drawRoundedRect(bar_x, fill_y, bar_width, fill_height, radius, radius)
-
-        # Redraw outlin for clean borders
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.setPen(QPen(QColor(0, 0, 0), 4))
-        painter.drawRoundedRect(bar_x, bar_y, bar_width, bar_height, radius, radius)
-
-        # Draw arrow based on is_increasing
-        arrow_x = bar_x - 15
-        arrow_center_y = height / 2
-        arrow_length = 30
-
-        def draw_arrow_path(p):
-            if self.is_increasing:
-                # Up arrow
-                p1 = QPointF(arrow_x, arrow_center_y + arrow_length / 2)
-                p2 = QPointF(arrow_x, arrow_center_y - arrow_length / 2)
-                p.drawLine(p1, p2)
-                p.drawLine(
-                    p2, QPointF(arrow_x - 8, arrow_center_y - arrow_length / 2 + 8)
-                )
-                p.drawLine(
-                    p2, QPointF(arrow_x + 8, arrow_center_y - arrow_length / 2 + 8)
-                )
-            else:
-                # Down arrow
-                p1 = QPointF(arrow_x, arrow_center_y - arrow_length / 2)
-                p2 = QPointF(arrow_x, arrow_center_y + arrow_length / 2)
-                p.drawLine(p1, p2)
-                p.drawLine(
-                    p2, QPointF(arrow_x - 8, arrow_center_y + arrow_length / 2 - 8)
-                )
-                p.drawLine(
-                    p2, QPointF(arrow_x + 8, arrow_center_y + arrow_length / 2 - 8)
-                )
-
-        # Draw outline (Thick white)
-        painter.setPen(
-            QPen(
-                QColor(255, 255, 255),
-                8,
-                Qt.PenStyle.SolidLine,
-                Qt.PenCapStyle.RoundCap,
-                Qt.PenJoinStyle.RoundJoin,
-            )
-        )
-        draw_arrow_path(painter)
-
-        # Draw inner arrow (Thin black)
-        painter.setPen(
-            QPen(
-                QColor(0, 0, 0),
-                4,
-                Qt.PenStyle.SolidLine,
-                Qt.PenCapStyle.RoundCap,
-                Qt.PenJoinStyle.RoundJoin,
-            )
-        )
-        draw_arrow_path(painter)
 
 
 class FocusRingOverlay(QWidget):
@@ -637,6 +566,8 @@ class MainWindow(QWidget):
         ):
             self.orbital_switcher.activate_selected()
             self.orbital_switcher.is_actively_switching = False
+            if self.engine:
+                self.engine._switcher_used = True
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -662,7 +593,6 @@ class MainWindow(QWidget):
         layout.addWidget(overlay_label)
 
         self.overlay_combo = QComboBox()
-        self.overlay_combo.addItem("Focus Meter (Bar)", "focus")
         self.overlay_combo.addItem("Focus Meter (Ring)", "focus_ring")
         self.overlay_combo.addItem("Orbital App Switcher", "orbital")
         self.overlay_combo.addItem("None", "none")
@@ -747,10 +677,7 @@ class MainWindow(QWidget):
         self.engine.start()
 
         overlay_selection = self.overlay_combo.currentData()
-        if overlay_selection == "focus":
-            if self.overlay is None:
-                self.overlay = FocusMeterOverlay()
-        elif overlay_selection == "focus_ring":
+        if overlay_selection == "focus_ring":
             if self.overlay is None:
                 self.overlay = FocusRingOverlay()
         else:
@@ -772,7 +699,16 @@ class MainWindow(QWidget):
             self.engine_timer.stop()
 
         if self.engine:
-            self.engine.stop()  # This blocks while matplotlib is shown
+            overlay_selection = self.overlay_combo.currentData()
+            
+            # Open blocking survey capturing explicitly
+            survey_results = None
+            if self.engine._running:
+                dlg = SurveyDialog(self)
+                if dlg.exec():
+                    survey_results = dlg.get_results()
+
+            self.engine.stop(overlay_name=overlay_selection, survey_results=survey_results)  # This blocks while matplotlib is shown
 
         if self.overlay:
             self.overlay.close()

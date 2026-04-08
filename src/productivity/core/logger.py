@@ -8,7 +8,7 @@ class SessionLogger:
         self.records: List[Dict[str, Any]] = []
         self.start_time = datetime.now()
         
-    def log(self, profile: str, window_title: str, relevance: float, kpm: float, mpm: float, focus_score: float):
+    def log(self, profile: str, window_title: str, relevance: float, kpm: float, mpm: float, focus_score: float, used_app_switcher: bool = False):
         self.records.append({
             "timestamp": datetime.now(),
             "profile": profile,
@@ -16,30 +16,37 @@ class SessionLogger:
             "relevance": relevance,
             "kpm": kpm,
             "mpm": mpm,
-            "focus_score": focus_score
+            "focus_score": focus_score,
+            "used_app_switcher": used_app_switcher
         })
         
-    def end_session(self) -> pd.DataFrame:
+    def end_session(self, overlay_name: str = "default", survey_results: dict = None) -> pd.DataFrame:
         df = pd.DataFrame(self.records)
         if not df.empty:
             import os
+            import json
             
             # Extract active profile safely isolating spaces natively
             profile_name = df.iloc[0]["profile"]
             safe_folder_name = "".join([c if c.isalnum() else "_" for c in profile_name]).lower()
             
-            # Create isolated directory structuring seamlessly
-            base_dir = os.path.join("sessions", safe_folder_name)
+            # Create isolated directory structuring seamlessly utilizing visualization
+            base_dir = os.path.join("sessions", safe_folder_name, overlay_name)
             os.makedirs(base_dir, exist_ok=True)
             
             # Map secure relative filepath explicitly natively
             filepath = os.path.join(base_dir, f"session_{self.start_time.strftime('%Y%m%d_%H%M%S')}.csv")
-            
             df.to_csv(filepath, index=False)
+            
+            if survey_results:
+                surv_path = filepath.replace(".csv", "_survey.json")
+                with open(surv_path, "w") as f:
+                    json.dump(survey_results, f, indent=4)
+                    
             print(f"Session data saved to {filepath}")
         return df
         
-    def plot_session(self, df: pd.DataFrame):
+    def plot_session(self, df: pd.DataFrame, survey_results: dict = None):
         if df.empty:
             print("No data to plot.")
             return
@@ -61,6 +68,19 @@ class SessionLogger:
             task_switches = task_switches.iloc[1:] # Skip the initial open event
             plt.vlines(task_switches["timestamp"], ymin=0, ymax=100, color='purple', linestyle=':', alpha=0.6, label='Task Switch')
             plt.scatter(task_switches["timestamp"], task_switches["focus_score"], color='purple', s=30, zorder=5)
+            
+        if survey_results:
+            textstr = '\n'.join((
+                f"Productivity Feel: {survey_results.get('productivity')}/7",
+                f"Distraction Level: {survey_results.get('distraction_level')}/7",
+                f"Distraction Length: {survey_results.get('distraction_length')}/7",
+                f"Tracking Accuracy: {survey_results.get('tracking_accuracy')}/7",
+                f"Profile Adherence: {survey_results.get('profile_adherence')}/7",
+                f"Mental Fatigue: {survey_results.get('mental_fatigue')}/7"
+            ))
+            props = dict(boxstyle='round', facecolor='white', alpha=0.7, edgecolor='gray')
+            plt.gca().text(0.02, 0.95, textstr, transform=plt.gca().transAxes, fontsize=9,
+                    verticalalignment='top', bbox=props, zorder=10)
             
         plt.title("Productivity Focus Over Time")
         plt.xlabel("Time")
