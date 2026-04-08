@@ -18,7 +18,7 @@ class BasePlatform(abc.ABC):
         pass
         
     @abc.abstractmethod
-    def get_running_apps(self) -> List[Dict[str, Any]]:
+    def get_running_apps(self, include_pixmaps: bool = True) -> List[Dict[str, Any]]:
         """Returns a list of dicts mapping ['name', 'pixmap', 'app_ref'] for all open GUI applications."""
         pass
         

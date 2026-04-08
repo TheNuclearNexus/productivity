@@ -45,7 +45,7 @@ class TrackerEngine:
         and pre-warms the LLM evaluation cache natively without user switching."""
         from productivity.platforms import get_platform
 
-        apps = get_platform().get_running_apps()
+        apps = get_platform().get_running_apps(include_pixmaps=False)
 
         if not apps:
             return

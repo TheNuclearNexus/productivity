@@ -41,7 +41,11 @@ class WindowsPlatform(BasePlatform):
             "os": "win32"
         }
 
-    def get_running_apps(self) -> List[Dict[str, Any]]:
+    def __init__(self):
+        super().__init__()
+        self._icon_cache = {}
+
+    def get_running_apps(self, include_pixmaps: bool = True) -> List[Dict[str, Any]]:
         apps = []
         try:
             from PySide6.QtGui import QImage, QPixmap
@@ -75,13 +79,17 @@ class WindowsPlatform(BasePlatform):
                 seen_apps.add(exe_path)
                 
                 pixmap = None
-                if exe_path:
-                    try:
-                        icon = provider.icon(QFileInfo(exe_path))
-                        if not icon.isNull():
-                            pixmap = icon.pixmap(128, 128)
-                    except Exception:
-                        pass
+                if exe_path and include_pixmaps:
+                    if exe_path in self._icon_cache:
+                        pixmap = self._icon_cache[exe_path]
+                    else:
+                        try:
+                            icon = provider.icon(QFileInfo(exe_path))
+                            if not icon.isNull():
+                                pixmap = icon.pixmap(128, 128)
+                                self._icon_cache[exe_path] = pixmap
+                        except Exception:
+                            pass
                 
                 safe_title = window.title[:20] + "..." if len(window.title) > 20 else window.title
                 

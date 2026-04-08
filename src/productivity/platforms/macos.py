@@ -69,7 +69,11 @@ class MacOSPlatform(BasePlatform):
             "os": "darwin"
         }
 
-    def get_running_apps(self) -> List[Dict[str, Any]]:
+    def __init__(self):
+        super().__init__()
+        self._icon_cache = {}
+
+    def get_running_apps(self, include_pixmaps: bool = True) -> List[Dict[str, Any]]:
         apps = []
         try:
             import AppKit
@@ -85,14 +89,18 @@ class MacOSPlatform(BasePlatform):
                     icon = app.icon()
                     
                     pixmap = None
-                    if icon:
-                        tiff = icon.TIFFRepresentation()
-                        if tiff:
-                            byte_str = tiff.bytes()
-                            if byte_str:
-                                qimg = QImage()
-                                if qimg.loadFromData(bytes(byte_str)):
-                                    pixmap = QPixmap.fromImage(qimg)
+                    if include_pixmaps and icon:
+                        if name in self._icon_cache:
+                            pixmap = self._icon_cache[name]
+                        else:
+                            tiff = icon.TIFFRepresentation()
+                            if tiff:
+                                byte_str = tiff.bytes()
+                                if byte_str:
+                                    qimg = QImage()
+                                    if qimg.loadFromData(bytes(byte_str)):
+                                        pixmap = QPixmap.fromImage(qimg)
+                                        self._icon_cache[name] = pixmap
                                     
                     apps.append({
                         "name": name,

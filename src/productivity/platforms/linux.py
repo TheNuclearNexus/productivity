@@ -36,7 +36,11 @@ class LinuxPlatform(BasePlatform):
             "os": "linux"
         }
 
-    def get_running_apps(self) -> List[Dict[str, Any]]:
+    def __init__(self):
+        super().__init__()
+        self._icon_cache = {}
+
+    def get_running_apps(self, include_pixmaps: bool = True) -> List[Dict[str, Any]]:
         apps = []
         try:
             import pygetwindow as gw
