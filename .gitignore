@@ -16,3 +16,4 @@ llm_cache.json
 overrides.json
 profiles.json
 config.json
+sessions/

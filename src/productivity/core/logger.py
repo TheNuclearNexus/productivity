@@ -22,9 +22,21 @@ class SessionLogger:
     def end_session(self) -> pd.DataFrame:
         df = pd.DataFrame(self.records)
         if not df.empty:
-            filename = f"session_{self.start_time.strftime('%Y%m%d_%H%M%S')}.csv"
-            df.to_csv(filename, index=False)
-            print(f"Session data saved to {filename}")
+            import os
+            
+            # Extract active profile safely isolating spaces natively
+            profile_name = df.iloc[0]["profile"]
+            safe_folder_name = "".join([c if c.isalnum() else "_" for c in profile_name]).lower()
+            
+            # Create isolated directory structuring seamlessly
+            base_dir = os.path.join("sessions", safe_folder_name)
+            os.makedirs(base_dir, exist_ok=True)
+            
+            # Map secure relative filepath explicitly natively
+            filepath = os.path.join(base_dir, f"session_{self.start_time.strftime('%Y%m%d_%H%M%S')}.csv")
+            
+            df.to_csv(filepath, index=False)
+            print(f"Session data saved to {filepath}")
         return df
         
     def plot_session(self, df: pd.DataFrame):
