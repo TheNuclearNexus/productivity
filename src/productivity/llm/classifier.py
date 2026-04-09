@@ -15,7 +15,7 @@ class WindowClassifier:
             from productivity.llm.client import GeminiClient
 
             self.client = GeminiClient(api_key=config.gemini_api_key.strip())
-            self.model = "gemini-2.5-flash"
+            self.model = "gemini-3.1-flash-lite-preview"
         else:
             from productivity.llm.client import OllamaClient
 

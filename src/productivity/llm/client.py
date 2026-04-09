@@ -30,7 +30,7 @@ class GeminiClient:
     def __init__(self, api_key: str):
         self.api_key = api_key
 
-    async def generate(self, prompt: str, model: str = "gemini-2.5-flash", json_mode: bool = False) -> Optional[str]:
+    async def generate(self, prompt: str, model: str = "gemini-3.1-flash-lite-preview", json_mode: bool = False) -> Optional[str]:
         """Send a prompt natively to Google's REST Endpoint implicitly requesting structured JSON."""
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
         

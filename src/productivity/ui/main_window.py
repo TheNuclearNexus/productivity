@@ -23,6 +23,7 @@ class OrbitalSignals(QObject):
     alt_tab_pressed = Signal(bool)
     alt_released = Signal()
 
+
 class SurveyDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -30,7 +31,7 @@ class SurveyDialog(QDialog):
         self.resize(400, 450)
 
         layout = QVBoxLayout()
-        
+
         # 1. Productivity Slider
         layout.addWidget(QLabel("How productive did you feel? (1: Low, 7: High)"))
         self.prod_slider = QSlider(Qt.Orientation.Horizontal)
@@ -50,7 +51,9 @@ class SurveyDialog(QDialog):
         layout.addWidget(self.dist_slider)
 
         # 3. Distraction Length
-        layout.addWidget(QLabel("How long did your distractions feel? (1: Short, 7: Long)"))
+        layout.addWidget(
+            QLabel("How long did your distractions feel? (1: Short, 7: Long)")
+        )
         self.len_slider = QSlider(Qt.Orientation.Horizontal)
         self.len_slider.setRange(1, 7)
         self.len_slider.setValue(4)
@@ -59,7 +62,11 @@ class SurveyDialog(QDialog):
         layout.addWidget(self.len_slider)
 
         # 4. Tracking Accuracy
-        layout.addWidget(QLabel("How accurate did automated tracking feel? (1: Inaccurate, 7: Accurate)"))
+        layout.addWidget(
+            QLabel(
+                "How accurate did automated tracking feel? (1: Inaccurate, 7: Accurate)"
+            )
+        )
         self.acc_slider = QSlider(Qt.Orientation.Horizontal)
         self.acc_slider.setRange(1, 7)
         self.acc_slider.setValue(4)
@@ -68,7 +75,9 @@ class SurveyDialog(QDialog):
         layout.addWidget(self.acc_slider)
 
         # 5. Profile Adherence
-        layout.addWidget(QLabel("Did you stick to your Profile Context? (1: Diverged, 7: Perfectly)"))
+        layout.addWidget(
+            QLabel("Did you stick to your Profile Context? (1: Diverged, 7: Perfectly)")
+        )
         self.prof_slider = QSlider(Qt.Orientation.Horizontal)
         self.prof_slider.setRange(1, 7)
         self.prof_slider.setValue(4)
@@ -77,7 +86,9 @@ class SurveyDialog(QDialog):
         layout.addWidget(self.prof_slider)
 
         # 6. Fatigue
-        layout.addWidget(QLabel("How mentally fatigued do you feel? (1: Refreshed, 7: Exhausted)"))
+        layout.addWidget(
+            QLabel("How mentally fatigued do you feel? (1: Refreshed, 7: Exhausted)")
+        )
         self.fatigue_slider = QSlider(Qt.Orientation.Horizontal)
         self.fatigue_slider.setRange(1, 7)
         self.fatigue_slider.setValue(4)
@@ -98,7 +109,7 @@ class SurveyDialog(QDialog):
             "distraction_length": self.len_slider.value(),
             "tracking_accuracy": self.acc_slider.value(),
             "profile_adherence": self.prof_slider.value(),
-            "mental_fatigue": self.fatigue_slider.value()
+            "mental_fatigue": self.fatigue_slider.value(),
         }
 
 
@@ -350,9 +361,6 @@ class ProfileEditorDialog(QDialog):
         del self.profile_manager.profiles[self.current_key]
         self.profile_manager.save()
         self.refresh_list()
-
-
-
 
 
 class FocusRingOverlay(QWidget):
@@ -632,7 +640,7 @@ class MainWindow(QWidget):
             self.engine.classifier.client = GeminiClient(
                 api_key=cfg.gemini_api_key.strip()
             )
-            self.engine.classifier.model = "gemini-2.5-flash"
+            self.engine.classifier.model = "gemini-3.1-flash-lite-preview"
         else:
             from productivity.llm.client import OllamaClient
 
@@ -677,9 +685,10 @@ class MainWindow(QWidget):
         self.engine.start()
 
         overlay_selection = self.overlay_combo.currentData()
-        
+
         from productivity.platforms import get_platform
-        get_platform().suppress_alt_tab = (overlay_selection == "orbital")
+
+        get_platform().suppress_alt_tab = overlay_selection == "orbital"
 
         if overlay_selection == "focus_ring":
             if self.overlay is None:
@@ -704,7 +713,7 @@ class MainWindow(QWidget):
 
         if self.engine:
             overlay_selection = self.overlay_combo.currentData()
-            
+
             # Open blocking survey capturing explicitly
             survey_results = None
             if self.engine._running:
@@ -712,7 +721,9 @@ class MainWindow(QWidget):
                 if dlg.exec():
                     survey_results = dlg.get_results()
 
-            self.engine.stop(overlay_name=overlay_selection, survey_results=survey_results)  # This blocks while matplotlib is shown
+            self.engine.stop(
+                overlay_name=overlay_selection, survey_results=survey_results
+            )  # This blocks while matplotlib is shown
 
         if self.overlay:
             self.overlay.close()
