@@ -28,11 +28,18 @@ class InputMonitor(Monitor):
         # Start listeners before Qt event loop to prevent CGEvent clashes
         self.m_listener = mouse.Listener(on_move=self.on_move, on_scroll=self.on_scroll)
 
-        self.k_listener = keyboard.Listener(
-            on_press=self.on_press,
-            on_release=self.on_release,
-            darwin_intercept=self.platform.get_keyboard_intercept(),
-        )
+        intercept = self.platform.get_keyboard_intercept()
+        
+        kwargs = {
+            "on_press": self.on_press,
+            "on_release": self.on_release
+        }
+        if sys.platform == "darwin":
+            kwargs["darwin_intercept"] = intercept
+        elif sys.platform == "win32":
+            kwargs["win32_event_filter"] = intercept
+            
+        self.k_listener = keyboard.Listener(**kwargs)
         self.k_listener.start()
         self.m_listener.start()
 

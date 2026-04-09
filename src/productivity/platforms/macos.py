@@ -15,6 +15,8 @@ class MacOSPlatform(BasePlatform):
     def get_keyboard_intercept(self) -> Optional[Callable]:
         def darwin_intercept_callback(event_type, event):
             try:
+                if not getattr(self, "suppress_alt_tab", False):
+                    return event
                 import Quartz
                 if event_type == 10: # kCGEventKeyDown
                     keycode = Quartz.CGEventGetIntegerValueField(event, Quartz.kCGKeyboardEventKeycode)

@@ -8,8 +8,16 @@ class WindowsPlatform(BasePlatform):
         return True # Windows doesn't universally throttle listener permissions like MacOS
 
     def get_keyboard_intercept(self) -> Optional[Callable]:
-        # Utilizing win32_event_filter natively inside pynput is complex, return None to allow the listener to safely default
-        return None
+        def win32_event_filter(msg, data):
+            try:
+                # 260 = WM_SYSKEYDOWN (Alt + Key pressed), 261 = WM_SYSKEYUP. vkCode 9 = Tab
+                if getattr(self, "suppress_alt_tab", False):
+                    if msg in (260, 261) and data.vkCode == 9:
+                        return False # Suppress OS native handling
+            except Exception:
+                pass
+            return True
+        return win32_event_filter
 
     def get_active_window_info(self) -> Dict[str, Any]:
         title, app_name, pid, browser_tab = None, None, None, None

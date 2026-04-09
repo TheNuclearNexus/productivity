@@ -677,6 +677,10 @@ class MainWindow(QWidget):
         self.engine.start()
 
         overlay_selection = self.overlay_combo.currentData()
+        
+        from productivity.platforms import get_platform
+        get_platform().suppress_alt_tab = (overlay_selection == "orbital")
+
         if overlay_selection == "focus_ring":
             if self.overlay is None:
                 self.overlay = FocusRingOverlay()
